@@ -1,5 +1,6 @@
 const User = require('../models/user'); 
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const createUser = async (userData) => { 
   
   if (!userData.name || userData.name.trim() === '') {
@@ -32,7 +33,11 @@ const createUser = async (userData) => {
 
   const newUser = new User({name: userData.name, email: userData.email, passwordHash, role: 'client'});
 
-  return await newUser.save(); 
+  const savedUser = await newUser.save();
+  
+  const token = jwt.sign({id: savedUser._id, email: savedUser.email, role: savedUser.role}, process.env.JWT_SECRET,{expiresIn: '1h'});
+
+  return {user: savedUser, token}; 
 }; 
 
 const getAllUsers = async (query) => {
@@ -112,10 +117,50 @@ const deactivateUser = async (id) => {
     );
 };
 
+const loginUser = async (email, password) => {
+  const user = await User.findOne({
+    email
+  });
+
+  if(!user){
+    const error = new Error('Credenciales incorrectas');
+
+    error.status = 401;
+    error.code = 'INVALID_CREDENTIALS';
+
+    throw error;
+  }
+
+  const validPassword = await bcrypt.compare(password, user.passwordHash);
+
+  if(!validPassword){
+    const error = new Error('Credenciales incorrectas');
+
+    error.status = 401;
+    error.code = 'INVALID_CREDENTIALS';
+
+    throw error;
+  }
+
+  const token = jwt.sign({id: user._id,email: user.email, role: user.role},process.env.JWT_SECRET,{expiresIn: '1h'});
+
+    return {
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+        },
+        token
+    };
+};
+
+
 module.exports = { 
     createUser,
     getAllUsers,
     getUserById,
     updateUser,
-    deactivateUser
+    deactivateUser,
+    loginUser
 }; 

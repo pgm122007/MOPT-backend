@@ -1,8 +1,14 @@
 const userService = require('../services/userService'); 
 const createUser = async (req, res, next) => { 
 try { 
-  const user = await userService.createUser(req.body); 
-  res.status(201).json({ id: user._id, name: user.name, email: user.email, role: user.role }); 
+  const result = await userService.createUser(req.body); 
+  res.status(201).json({
+    user:{ 
+        id: result.user._id, 
+        name: result.user.name, 
+        email: result.user.email, 
+        role: result.user.role }, 
+    token: result.token}); 
 } catch (error) { 
     next(error);
   }
@@ -57,10 +63,30 @@ const deactivateUser = async (req, res, next) => {
     }
 };
 
+const loginUser = async (req, res, next) => {
+    try {
+        const result =
+            await userService.loginUser(
+                req.body.email,
+                req.body.password
+            );
+        res.status(200).json({
+            user: {
+                id: result.user.id,
+                name: result.user.name,
+                email: result.user.email,
+                role: result.user.role
+            },token: result.token});
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = { 
     createUser,
     getAllUsers,
     getUserById,
     updateUser,
-    deactivateUser
+    deactivateUser,
+    loginUser
 };
